@@ -1,0 +1,11 @@
+# .gitignore
+[Dd]ebug/
+[Rr]elease/
+bin/
+obj/
+.env
+.artifacts/
+.vs/
+.vscode/
+*.user
+*.suo

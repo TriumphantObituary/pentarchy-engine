@@ -1,0 +1,20 @@
+# docker-compose.yaml
+
+services:
+  dev_sandbox:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: pentarchy_dev_env
+    volumes:
+      - .:/app:z
+    environment:
+      - DOTNET_CLI_TELEMETRY_OPTOUT=1
+    stdin_open: true
+    tty: true
+
+
+    # Removed network_mode: host to prevent WSL2 loopback failure
+    # If Level 5 needs to stream JSON out to Windows later, you would add:
+    # ports:
+    #   - "5000:5000"
