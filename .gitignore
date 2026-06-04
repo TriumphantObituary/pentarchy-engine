@@ -9,3 +9,6 @@ obj/
 .vscode/
 *.user
 *.suo
+[Tt]est[Rr]esults/
+coverage-report/
+*.cobertura.xml

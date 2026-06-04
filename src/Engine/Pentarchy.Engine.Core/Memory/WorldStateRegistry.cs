@@ -32,6 +32,18 @@ public sealed class WorldStateRegistry
     /// </summary>
     public void CommitAttribute(int pageIndex, int slotIndex, AttributeTuple attribute)
     {
+        // Explicitly safeguard page boundaries relative to our allocated array size
+        if (pageIndex < 0 || pageIndex >= _pages.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pageIndex), $"Page index must be between 0 and {_pages.Length - 1}.");
+        }
+
+        // Explicitly safeguard slot boundaries (0 to 31 slots maximum per 1KB page)
+        if (slotIndex < 0 || slotIndex > 31)
+        {
+            throw new ArgumentOutOfRangeException(nameof(slotIndex), "Slot index must be between 0 and 31.");
+        }
+
         MemoryPage page = _pages[pageIndex];
         int targetOffset = HeaderSize + (slotIndex * SlotSize);
 
@@ -52,10 +64,22 @@ public sealed class WorldStateRegistry
     }
 
     /// <summary>
-    /// Rehydrates an abstract AttributeTuple directly from raw binary page offsets.
+    /// Fetches an abstract AttributeTuple directly from raw binary page offsets.
     /// </summary>
-    public AttributeTuple RehydrateAttribute(int pageIndex, int slotIndex)
+    public AttributeTuple FetchAttribute(int pageIndex, int slotIndex)
     {
+        // Explicitly safeguard page boundaries relative to our allocated array size
+        if (pageIndex < 0 || pageIndex >= _pages.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pageIndex), $"Page index must be between 0 and {_pages.Length - 1}.");
+        }
+
+        // Explicitly safeguard slot boundaries (0 to 31 slots maximum per 1KB page)
+        if (slotIndex < 0 || slotIndex > 31)
+        {
+            throw new ArgumentOutOfRangeException(nameof(slotIndex), "Slot index must be between 0 and 31.");
+        }
+
         MemoryPage page = _pages[pageIndex];
         int targetOffset = HeaderSize + (slotIndex * SlotSize);
 
