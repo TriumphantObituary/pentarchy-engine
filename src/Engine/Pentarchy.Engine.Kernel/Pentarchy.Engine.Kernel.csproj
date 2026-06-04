@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Pentarchy.Engine.Core\Pentarchy.Engine.Core.csproj" />
+    <ProjectReference Include="..\..\Diagnostics\Pentarchy.Engine.Diagnostics\Pentarchy.Engine.Diagnostics.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
