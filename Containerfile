@@ -1,6 +1,6 @@
 # Containerfile
-# Pin the exact SDK image using its cryptographic or stable tag to ensure 100% determinism
-FROM mcr.microsoft.com/dotnet/sdk:9.0-alpine AS dev-env
+# Pin the exact .NET 10 SDK image for ultimate determinism
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS dev-env
 
 WORKDIR /app
 

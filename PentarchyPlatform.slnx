@@ -1,0 +1,18 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Diagnostics/">
+    <Project Path="src/Diagnostics/Pentarchy.Engine.Diagnostics/Pentarchy.Engine.Diagnostics.csproj" />
+  </Folder>
+  <Folder Name="/src/Engine/">
+    <Project Path="src/Engine/Pentarchy.Engine.Core/Pentarchy.Engine.Core.csproj" />
+    <Project Path="src/Engine/Pentarchy.Engine.Kernel/Pentarchy.Engine.Kernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Pentarchy.Engine.Core.Tests/Pentarchy.Engine.Core.Tests.csproj" />
+  </Folder>
+</Solution>
