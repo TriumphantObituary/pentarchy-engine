@@ -1,7 +1,7 @@
 ﻿using System;
 using Pentarchy.Engine.Core.Memory;
 using Pentarchy.Engine.Core.Primitives;
-using Pentarchy.Engine.Diagnostics; // Pulling in our new diagnostic track!
+using Pentarchy.Engine.Diagnostics.Core; // Pulling in our new diagnostic track!
 
 namespace Pentarchy.Engine.Kernel;
 
@@ -37,19 +37,21 @@ internal class Program
         Console.WriteLine("  -> Materialization complete.\n");
 
         // 3. Hack directly into the WorldStateRegistry's internal page array 
-        // using our modern diagnostic intrusion tools to see the raw byte canvas.
-        // We will look at the first 128 bytes of each page (Header + 3 Data Slots).
-        Console.WriteLine("[STAGE 2] Printing Intrusion Telemetry via HexDumpVisualizer:\n");
+        Console.WriteLine("[STAGE 2] Printing Intrusion Telemetry via MemoryPageVisualizer:\n");
         
-        // Since our registry stores pages inside an array, let's extract them via a bypass helper method
-        // or temporary simulation wrapper to view the data blocks directly.
         // For our test, we will instantiate individual pages to inspect the visualizer output explicitly!
-        
         MemoryPage debugPage0 = new MemoryPage(Guid.NewGuid());
         MemoryPage debugPage1 = new MemoryPage(Guid.NewGuid());
         
         // Allocate our 32-byte scratchpad EXACTLY ONCE outside the loop execution frame
         Span<byte> slotBuffer = stackalloc byte[32];
+
+        // Let's deliberately push a payload deep into Slot 25 (Offset 16 + 25 * 32 = byte 816)
+        int deepSlot = 25;
+        int targetOffsetDeep = 16 + (deepSlot * 32); // 816
+        System.Text.Encoding.UTF8.GetBytes("DEEP_CORE_DATA").AsSpan().CopyTo(slotBuffer.Slice(0, 24));
+        BitConverter.GetBytes(777.7).CopyTo(slotBuffer.Slice(24, 8));
+        debugPage0.Write(targetOffsetDeep, slotBuffer);
 
         // Re-populating standalone pages directly to match our registry layout for explicit visual inspection
         foreach (var payload in simulationPayloads)
@@ -69,13 +71,37 @@ internal class Program
 
         // Render Page 0 Dump
         Console.WriteLine("--- CORE STORAGE SECTOR: PAGE 00 ---");
-        string dump0 = HexDumpVisualizer.RenderPageDump(debugPage0, bytesToScan: 128);
+        string dump0 = MemoryPageVisualizer.RenderPageDump(debugPage0, bytesToScan: 128);
         Console.WriteLine(dump0);
 
         // Render Page 1 Dump
         Console.WriteLine("\n--- CORE STORAGE SECTOR: PAGE 01 ---");
-        string dump1 = HexDumpVisualizer.RenderPageDump(debugPage1, bytesToScan: 128);
+        string dump1 = MemoryPageVisualizer.RenderPageDump(debugPage1, bytesToScan: 128);
         Console.WriteLine(dump1);
+
+        // Render Page 0 Dump using our brand-new target window filter parameters!
+        // We skip the first 800 bytes entirely and look strictly at the 64 bytes containing our deep slot.
+        Console.WriteLine($"--- PROBING CORE STORAGE WINDOW: STARTING AT BYTE {targetOffsetDeep} ---");
+        string dump2 = MemoryPageVisualizer.RenderPageDump(debugPage0, offsetStart: targetOffsetDeep, bytesToScan: 64);
+        Console.WriteLine(dump2);
+
+        // NEW: STAGE 2.5 - Invoking our advanced structural helper lenses
+        Console.WriteLine("\n[STAGE 2.5] Invoking Advanced Structural Helper Lenses:\n");
+
+        // 1. Check the allocation status grid for Page 0
+        Console.WriteLine("--- VISUALIZING ENGINE SLOT DISTRIBUTION (PAGE 00) ---");
+        string allocationGrid = MemoryPageVisualizer.RenderAllocationGrid(debugPage0, slotsToScan: 6);
+        Console.WriteLine(allocationGrid);
+
+        // Check the targeted allocation status grid for our deep memory partition
+        Console.WriteLine("--- VISUALIZING TARGETED ENGINE SLOT DISTRIBUTION ---");
+        allocationGrid = MemoryPageVisualizer.RenderAllocationGrid(debugPage0, startSlot: 22, slotsToScan: 5);
+        Console.WriteLine(allocationGrid);
+
+        // 2. Perform an atomic bit-level deconstruction of Unit 2's fractional PositionX variable
+        Console.WriteLine("--- INSPECTING THE FLOATING POINT CORE MATRIS (U2_PositionX) ---");
+        string ieeeDeconstruction = MemoryPageVisualizer.InspectIEEE754Double(500.2);
+        Console.WriteLine(ieeeDeconstruction);
 
         Console.WriteLine("[STAGE 3] Diagnostic Intrusion Scan Completed Successfully.");
     }
