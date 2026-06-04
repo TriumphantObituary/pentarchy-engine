@@ -628,4 +628,8 @@ This workflow is highly reliable. It shields your project from host environment 
 
 
 
+# 1. Compile the suite
+dotnet build PentarchyPlatform.sln
+
+# 2. Run the Kernel project execution path
 dotnet run --project src/Engine/Pentarchy.Engine.Kernel/Pentarchy.Engine.Kernel.csproj
