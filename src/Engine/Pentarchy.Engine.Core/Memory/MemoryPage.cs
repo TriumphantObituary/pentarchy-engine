@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 
 namespace Pentarchy.Engine.Core.Memory;
 
@@ -10,22 +11,22 @@ public sealed class MemoryPage
 {
     // Our prototype page size is pinned to exactly 1024 bytes (1 KB)
     public const int PageSize = 1024;
-    
+
     // The physical array allocated contiguously on the machine's memory layout
-    private readonly byte[] _rawBuffer;
+    private readonly byte[] _buffer = new byte[PageSize];
+    public ReadOnlySpan<byte> Buffer => _buffer;
 
-    /// <summary>
-    /// Gets a read-only view of the raw memory buffer.
-    /// </summary>
-    public ReadOnlySpan<byte> Buffer => _rawBuffer;
+    // Exposed read-only properties that parse the raw header bytes on demand
+    public ulong PageTrackerId => BinaryPrimitives.ReadUInt64LittleEndian(_buffer.AsSpan(0, 8));
+    public ulong EntityId      => BinaryPrimitives.ReadUInt64LittleEndian(_buffer.AsSpan(8, 8));
 
-    public MemoryPage(Guid pageId)
+    public MemoryPage(ulong pageTrackerId, ulong entityId)
     {
-        _rawBuffer = new byte[PageSize];
-        
-        // Write the unique Page ID into the first 16 bytes of the page header
-        byte[] idBytes = pageId.ToByteArray();
-        idBytes.AsSpan().CopyTo(_rawBuffer.AsSpan(0, 16));
+        // Step 1: Stamp the 8-byte Page Tracker ID into Bytes 0 to 7
+        BinaryPrimitives.WriteUInt64LittleEndian(_buffer.AsSpan(0, 8), pageTrackerId);
+
+        // Step 2: Stamp the 8-byte Entity ID Handle into Bytes 8 to 15
+        BinaryPrimitives.WriteUInt64LittleEndian(_buffer.AsSpan(8, 8), entityId);
     }
 
     /// <summary>
@@ -33,14 +34,18 @@ public sealed class MemoryPage
     /// </summary>
     public void Write(int offset, ReadOnlySpan<byte> data)
     {
-        // Safety Bound Check: Prevent memory corruption or out-of-bounds exploits
-        if (offset < 16 || offset + data.Length > PageSize)
+        if (offset < 16)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Memory write operation violated page boundaries.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot write directly into the protected 16-byte header zone.");
+        }
+
+        if (offset + data.Length > _buffer.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(offset), "Write command exceeds physical 1KB page boundaries.");
         }
 
         // Copy the raw bytes directly onto the binary canvas
-        data.CopyTo(_rawBuffer.AsSpan(offset));
+        data.CopyTo(_buffer.AsSpan(offset));
     }
 
     /// <summary>
@@ -48,13 +53,17 @@ public sealed class MemoryPage
     /// </summary>
     public ReadOnlySpan<byte> Read(int offset, int length)
     {
-        // Safety Bound Check
-        if (offset < 0 || offset + length > PageSize)
+        if (offset < 16)
         {
-            throw new ArgumentOutOfRangeException(nameof(offset), "Memory read operation violated page boundaries.");
+            throw new ArgumentOutOfRangeException(nameof(offset), "Cannot read directly from the protected 16-byte header zone.");
+        }
+
+        if (offset + length > _buffer.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length), "Read command exceeds physical 1KB page boundaries.");
         }
 
         // Return a zero-allocation window/slice of the buffer
-        return _rawBuffer.AsSpan(offset, length);
+        return _buffer.AsSpan(offset, length);
     }
 }

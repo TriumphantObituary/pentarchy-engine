@@ -7,21 +7,22 @@ namespace Pentarchy.Engine.Core.Tests.Memory;
 public class MemoryPageTests
 {
     [Fact]
-    public void Constructor_Should_InitializeWithProtectedHeader()
+    public void Constructor_Should_InitializeWithBitAlignedTrackingHeaders()
     {
         // Arrange
-        Guid expectedGuid = Guid.NewGuid();
+        ulong expectedTrackerId = 42;
+        ulong expectedEntityId = 1042;
 
         // Act
-        MemoryPage page = new MemoryPage(expectedGuid);
+        MemoryPage page = new MemoryPage(expectedTrackerId, expectedEntityId);
 
         // Assert
-        // Rehydrate the first 16 bytes of the raw buffer to verify the GUID landed safely
         byte[] rawHeaderBytes = new byte[16];
         page.Buffer.Slice(0, 16).CopyTo(rawHeaderBytes);
         Guid actualGuid = new Guid(rawHeaderBytes);
 
-        Assert.Equal(expectedGuid, actualGuid);
+        Assert.Equal(expectedTrackerId, page.PageTrackerId);
+        Assert.Equal(expectedEntityId, page.EntityId);
     }
 
     [Theory]
@@ -31,7 +32,7 @@ public class MemoryPageTests
     public void Write_Should_ThrowArgumentOutOfRangeException_When_TargetingHeaderZone(int illegalOffset)
     {
         // Arrange
-        MemoryPage page = new MemoryPage(Guid.NewGuid());
+        MemoryPage page = new MemoryPage(0, 0);
         byte[] dummyData = new byte[4] { 0xAA, 0xBB, 0xCC, 0xDD };
 
         // Act & Assert

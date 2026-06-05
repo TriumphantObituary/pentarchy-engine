@@ -40,8 +40,8 @@ internal class Program
         Console.WriteLine("[STAGE 2] Printing Intrusion Telemetry via MemoryPageVisualizer:\n");
         
         // For our test, we will instantiate individual pages to inspect the visualizer output explicitly!
-        MemoryPage debugPage0 = new MemoryPage(Guid.NewGuid());
-        MemoryPage debugPage1 = new MemoryPage(Guid.NewGuid());
+        MemoryPage debugPage0 = new MemoryPage(0, 1);
+        MemoryPage debugPage1 = new MemoryPage(1, 2);
         
         // Allocate our 32-byte scratchpad EXACTLY ONCE outside the loop execution frame
         Span<byte> slotBuffer = stackalloc byte[32];
@@ -100,7 +100,7 @@ internal class Program
 
         // 2. Perform an atomic bit-level deconstruction of Unit 2's fractional PositionX variable
         Console.WriteLine("--- INSPECTING THE FLOATING POINT CORE MATRIS (U2_PositionX) ---");
-        string ieeeDeconstruction = MemoryPageVisualizer.InspectIEEE754Double(500.2);
+        string ieeeDeconstruction = MemoryPageVisualizer.InspectIEEE754Double(registry.FetchAttribute(1, 0).Value);
         Console.WriteLine(ieeeDeconstruction);
 
         Console.WriteLine("[STAGE 3] Diagnostic Intrusion Scan Completed Successfully.");

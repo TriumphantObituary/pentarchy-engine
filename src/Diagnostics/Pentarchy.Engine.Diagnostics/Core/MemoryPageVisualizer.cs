@@ -17,34 +17,26 @@ public static class MemoryPageVisualizer
     public static string RenderPageDump(MemoryPage page, int offsetStart = 0, int bytesToScan = 128)
     {
         // 1. Enforce strict safety guardrails on our memory constraints
-        if (offsetStart < 0 || offsetStart >= MemoryPage.PageSize)
-        {
-            offsetStart = 0;
-        }
+        if (offsetStart < 0 || offsetStart >= MemoryPage.PageSize) offsetStart = 0;
 
         // Clamp the scan length to ensure our window cannot run off the cliff of physical memory
-        if (offsetStart + bytesToScan > MemoryPage.PageSize)
-        {
-            bytesToScan = MemoryPage.PageSize - offsetStart;
-        }
+        if (offsetStart + bytesToScan > MemoryPage.PageSize) bytesToScan = MemoryPage.PageSize - offsetStart;
 
         // Align our visual offset start backward to the nearest 16-byte row boundary 
         // to maintain crisp terminal column layout alignment
-        int alignedStart = (offsetStart / 16) * 16;
+        int alignedStart = offsetStart / 16 * 16;
         int alignedLength = bytesToScan + (offsetStart - alignedStart);
         
         // Ensure our adjusted length doesn't overflow the page boundary either
-        if (alignedStart + alignedLength > MemoryPage.PageSize)
-        {
-            alignedLength = MemoryPage.PageSize - alignedStart;
-        }
+        if (alignedStart + alignedLength > MemoryPage.PageSize) alignedLength = MemoryPage.PageSize - alignedStart;
         
         ReadOnlySpan<byte> memoryBuffer = page.Buffer;
 
         StringBuilder output = new StringBuilder();
         output.AppendLine("=============================================================================");
-        output.AppendLine($"| PENTARCHY RAW CORE DIAGNOSTIC INTRUSION MAP                              |");
-        output.AppendLine($"| WINDOW: BYTES {alignedStart} TO {alignedStart + alignedLength} / {MemoryPage.PageSize} TOTAL FIXED MEMORY                 |");
+        output.AppendLine($"  PENTARCHY RAW CORE DIAGNOSTIC INTRUSION MAP");
+        output.AppendLine($"  STRUCTURE: [PAGE TRACKER ID: {page.PageTrackerId}] | [LOGICAL ENTITY ID: {page.EntityId}]");
+        output.AppendLine($"  WINDOW: BYTES {alignedStart} TO {alignedStart + alignedLength} / {MemoryPage.PageSize} TOTAL FIXED MEMORY|");
         output.AppendLine("=============================================================================");
         output.AppendLine("OFFSET    00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F  ASCII REPR");
         output.AppendLine("-----------------------------------------------------------------------------");
@@ -112,7 +104,8 @@ public static class MemoryPageVisualizer
 
         StringBuilder output = new StringBuilder();
         output.AppendLine($"=============================================================================");
-        output.AppendLine($"| PAGE ALLOCATION STRUCTURAL MATRIX (SLOTS {startSlot:D2} TO {startSlot + slotsToScan - 1:D2})                    |");
+        output.AppendLine($"  PAGE ALLOCATION STRUCTURAL MATRIX (SLOTS {startSlot:D2} TO {startSlot + slotsToScan - 1:D2})");
+        output.AppendLine($"  STRUCTURE: [PAGE TRACKER ID: {page.PageTrackerId}] | [LOGICAL ENTITY ID: {page.EntityId}]");
         output.AppendLine($"=============================================================================");
         
         ReadOnlySpan<byte> buffer = page.Buffer;
@@ -128,9 +121,13 @@ public static class MemoryPageVisualizer
             if (isAllocated)
             {
                 // 1. Rehydrate the 24-byte Text Key
-                byte[] tempKeyBytes = new byte[24];
-                for (int j = 0; j < 24; j++) tempKeyBytes[j] = buffer[startByte + j];
-                string keyName = Encoding.UTF8.GetString(tempKeyBytes).TrimEnd('\0');
+                ReadOnlySpan<byte> keyWindow = buffer.Slice(startByte, 24);
+                int actualLength = 0;
+                while (actualLength < 24 && keyWindow[actualLength] != 0)
+                {
+                    actualLength++;
+                }
+                string keyName = Encoding.UTF8.GetString(keyWindow.Slice(0, actualLength));
 
                 // 2. Rehydrate the 8-byte IEEE Double Value
                 ReadOnlySpan<byte> valueSlice = buffer.Slice(startByte + 24, 8);

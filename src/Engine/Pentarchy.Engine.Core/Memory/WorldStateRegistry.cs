@@ -20,11 +20,31 @@ public sealed class WorldStateRegistry
 
     public WorldStateRegistry(int pageCount)
     {
+        if (pageCount <= 0)
+        {
+            throw new ArgumentException("Registry must contain at least one memory page.", nameof(pageCount));
+        }
+
         _pages = new MemoryPage[pageCount];
         for (int i = 0; i < pageCount; i++)
         {
-            _pages[i] = new MemoryPage(Guid.NewGuid());
+            // Assign a sequential system tracking ID (0, 1, 2...) to each page,
+            // and initialize the Entity ID to 0 (representing an unassigned empty page slot).
+            _pages[i] = new MemoryPage(pageTrackerId: (ulong)i, entityId: 0);
         }
+    }
+
+    /// <summary>
+    /// Explicitly exposes an API so higher layers can look up which entity owns a page
+    /// </summary>
+    public ulong GetEntityOwnerOfPage(int pageIndex)
+    {
+        if (pageIndex < 0 || pageIndex >= _pages.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pageIndex));
+        }
+
+        return _pages[pageIndex].EntityId;
     }
 
     /// <summary>
