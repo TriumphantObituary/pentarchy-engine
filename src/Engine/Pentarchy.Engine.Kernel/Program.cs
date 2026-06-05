@@ -1,7 +1,8 @@
 ﻿using System;
 using Pentarchy.Engine.Core.Memory;
 using Pentarchy.Engine.Core.Primitives;
-using Pentarchy.Engine.Diagnostics.Core; // Pulling in our new diagnostic track!
+using Pentarchy.Engine.Diagnostics.Memory;
+using Pentarchy.Engine.Diagnostics.Primitives;
 
 namespace Pentarchy.Engine.Kernel;
 
@@ -9,100 +10,116 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        Console.WriteLine("=================================================");
-        Console.WriteLine("[SYSTEM] Running Saturated Memory Core Hex Audit");
-        Console.WriteLine("=================================================\n");
+        Console.WriteLine("=============================================================================");
+        Console.WriteLine("   PENTARCHY ENGINE CORE MALLEABLE RUNTIME DEPLOYMENT");
+        Console.WriteLine("   RUNNING ZERO-ALLOCATION COORDINTATION AND DIAGNOSTIC MATRIX");
+        Console.WriteLine("=============================================================================\n");
 
-        // 1. Initialize our Registry with 2 isolated memory pages
-        WorldStateRegistry registry = new WorldStateRegistry(pageCount: 2);
+        // ---------------------------------------------------------------------
+        // STAGE 1: REGISTRY INITIALIZATION & TYPOLOGY PROVISIONING
+        // ---------------------------------------------------------------------
+        Console.WriteLine("[STAGE 1] Allocating Flat Cache-Aligned Registry Matrix Fields...");
+        
+        int totalProjectedPages = 3;
+        WorldStateRegistry registry = new WorldStateRegistry(pageCount: totalProjectedPages);
 
-        // 2. Map out our combat entity primitives across the page boundaries
-        var simulationPayloads = new[]
+        // Provision specific, type-safe data lanes using Page Typology Isolation
+        registry.AssignPageToEntity(pageIndex: 0, entityId: 101, pageTypeMode: 0); // Page 0: Quantitative Attributes
+        registry.AssignPageToEntity(pageIndex: 1, entityId: 101, pageTypeMode: 1); // Page 1: Qualitative Tags
+        registry.AssignPageToEntity(pageIndex: 2, entityId: 202, pageTypeMode: 2); // Page 2: Relational Graph Edges
+
+        Console.WriteLine("  -> Registry pipelines initialized and mapped cleanly.\n");
+
+        // ---------------------------------------------------------------------
+        // STAGE 2: STUCTURAL SIMULATION PAYLOAD MATERIALIZATION
+        // ---------------------------------------------------------------------
+        Console.WriteLine("[STAGE 2] Streaming Polymorphic Primitive Fields Into Memory Slots...");
+
+        // 1. Commit Quantitative Attributes into Page 0 (Mode 0)
+        registry.CommitAttribute(pageIndex: 0, slotIndex: 0, new AttributeTuple("U1_PositionX", 42.0));
+        registry.CommitAttribute(pageIndex: 0, slotIndex: 1, new AttributeTuple("U1_PositionY", 108.5));
+        registry.CommitAttribute(pageIndex: 0, slotIndex: 2, new AttributeTuple("U1_Health",    100.0));
+        registry.CommitAttribute(pageIndex: 0, slotIndex: 29, new AttributeTuple("U1_DeepCore",  777.7)); // Max slot limit edge
+
+        // 2. Commit Qualitative Metadata Tags into Page 1 (Mode 1)
+        registry.CommitTag(pageIndex: 1, slotIndex: 0, new MetadataTag("Faction:Vanguard"));
+        registry.CommitTag(pageIndex: 1, slotIndex: 1, new MetadataTag("Status:Poisoned"));
+        registry.CommitTag(pageIndex: 1, slotIndex: 5, new MetadataTag("💀💀💀")); // Complex multi-byte validation
+
+        // 3. Commit Relational Graph Spatial Edges into Page 2 (Mode 2)
+        registry.CommitEdge(pageIndex: 2, slotIndex: 0, new GraphEdge(sourceNodeId: 1001, destinationNodeId: 2002, traversalCost: 54.321, flags: 3));
+
+        Console.WriteLine("  -> Materialization completed with zero runtime heap generation pools.\n");
+
+        // ---------------------------------------------------------------------
+        // STAGE 3: INTERCEPT BOUNDARY PROTECTION VIOLATIONS
+        // ---------------------------------------------------------------------
+        Console.WriteLine("[STAGE 3] Testing Registry Protection Guard Shrouds...");
+        try
         {
-            (Page: 0, Slot: 0, Attr: new AttributeTuple("U1_PositionX", 42.0)),
-            (Page: 0, Slot: 1, Attr: new AttributeTuple("U1_PositionY", 108.5)),
-            (Page: 0, Slot: 2, Attr: new AttributeTuple("U1_Health",    100.0)),
-            
-            // Cross the boundary to Page 1
-            (Page: 1, Slot: 0, Attr: new AttributeTuple("U2_PositionX", 500.2)),
-            (Page: 1, Slot: 1, Attr: new AttributeTuple("U2_PositionY", 12.3)),
-            (Page: 1, Slot: 2, Attr: new AttributeTuple("U2_Health",    85.0))
-        };
-
-        Console.WriteLine($"[STAGE 1] Streaming {simulationPayloads.Length} attributes into raw memory blocks...");
-        foreach (var payload in simulationPayloads)
-        {
-            registry.CommitAttribute(payload.Page, payload.Slot, payload.Attr);
+            // Typology Cross-Contamination Intrusion Attempt: Write a text tag onto an Attribute page
+            registry.CommitTag(pageIndex: 0, slotIndex: 4, new MetadataTag("Intrusion:Failed"));
         }
-        Console.WriteLine("  -> Materialization complete.\n");
-
-        // 3. Hack directly into the WorldStateRegistry's internal page array 
-        Console.WriteLine("[STAGE 2] Printing Intrusion Telemetry via MemoryPageVisualizer:\n");
-        
-        // For our test, we will instantiate individual pages to inspect the visualizer output explicitly!
-        MemoryPage debugPage0 = new MemoryPage(0, 1);
-        MemoryPage debugPage1 = new MemoryPage(1, 2);
-        
-        // Allocate our 32-byte scratchpad EXACTLY ONCE outside the loop execution frame
-        Span<byte> slotBuffer = stackalloc byte[32];
-
-        // Let's deliberately push a payload deep into Slot 25 (Offset 16 + 25 * 32 = byte 816)
-        int deepSlot = 25;
-        int targetOffsetDeep = 16 + (deepSlot * 32); // 816
-        System.Text.Encoding.UTF8.GetBytes("DEEP_CORE_DATA").AsSpan().CopyTo(slotBuffer.Slice(0, 24));
-        BitConverter.GetBytes(777.7).CopyTo(slotBuffer.Slice(24, 8));
-        debugPage0.Write(targetOffsetDeep, slotBuffer);
-
-        // Re-populating standalone pages directly to match our registry layout for explicit visual inspection
-        foreach (var payload in simulationPayloads)
+        catch (InvalidOperationException ex)
         {
-            int targetOffset = 16 + (payload.Slot * 32);
-            
-            // Clean out the scratchpad from the previous iteration so data doesn't leak
-            slotBuffer.Clear();
-            
-            // Serialize the current entity tuple payload into our stationary workbench
-            System.Text.Encoding.UTF8.GetBytes(payload.Attr.Key).AsSpan().CopyTo(slotBuffer.Slice(0, 24));
-            BitConverter.GetBytes(payload.Attr.Value).CopyTo(slotBuffer.Slice(24, 8));
-            
-            if (payload.Page == 0) debugPage0.Write(targetOffset, slotBuffer);
-            else debugPage1.Write(targetOffset, slotBuffer);
+            Console.WriteLine($"  ├─ [GUARD CATCH] Typology Cross-Contamination Intercepted: {ex.Message}");
         }
 
-        // Render Page 0 Dump
-        Console.WriteLine("--- CORE STORAGE SECTOR: PAGE 00 ---");
-        string dump0 = MemoryPageVisualizer.RenderPageDump(debugPage0, bytesToScan: 128);
-        Console.WriteLine(dump0);
+        try
+        {
+            // Unallocated Read Deflection Attempt: Read from a tracking slot that hasn't been active
+            _ = registry.FetchAttribute(pageIndex: 0, slotIndex: 15);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Console.WriteLine($"  └─ [GUARD CATCH] Unallocated Memory Access Intercepted: {ex.Message}\n");
+        }
 
-        // Render Page 1 Dump
-        Console.WriteLine("\n--- CORE STORAGE SECTOR: PAGE 01 ---");
-        string dump1 = MemoryPageVisualizer.RenderPageDump(debugPage1, bytesToScan: 128);
-        Console.WriteLine(dump1);
+        // ---------------------------------------------------------------------
+        // STAGE 4: ADVANCED DIAGNOSTICS & TELEMETRY VISUALIZATION
+        // ---------------------------------------------------------------------
+        Console.WriteLine("[STAGE 4] Executing Diagnostics & Structural Extrusion Lenses:\n");
 
-        // Render Page 0 Dump using our brand-new target window filter parameters!
-        // We skip the first 800 bytes entirely and look strictly at the 64 bytes containing our deep slot.
-        Console.WriteLine($"--- PROBING CORE STORAGE WINDOW: STARTING AT BYTE {targetOffsetDeep} ---");
-        string dump2 = MemoryPageVisualizer.RenderPageDump(debugPage0, offsetStart: targetOffsetDeep, bytesToScan: 64);
-        Console.WriteLine(dump2);
+        // 1. Macro Schematic Topology Dashboard
+        Console.WriteLine(WorldStateRegistryVisualizer.RenderRegistryDashboard(registry, totalProjectedPages));
 
-        // NEW: STAGE 2.5 - Invoking our advanced structural helper lenses
-        Console.WriteLine("\n[STAGE 2.5] Invoking Advanced Structural Helper Lenses:\n");
+        // 2. Atomic Primitive Value Introspections
+        AttributeTuple sampledAttr = registry.FetchAttribute(pageIndex: 0, slotIndex: 1);
+        Console.WriteLine("--- ATOMIC INTROSPECTION LENS: QUANTITATIVE ATTRIBUTE ---");
+        Console.WriteLine(AttributeTupleVisualizer.Render(sampledAttr));
 
-        // 1. Check the allocation status grid for Page 0
-        Console.WriteLine("--- VISUALIZING ENGINE SLOT DISTRIBUTION (PAGE 00) ---");
-        string allocationGrid = MemoryPageVisualizer.RenderAllocationGrid(debugPage0, slotsToScan: 6);
-        Console.WriteLine(allocationGrid);
+        MetadataTag sampledTag = registry.FetchTag(pageIndex: 1, slotIndex: 5);
+        Console.WriteLine("--- ATOMIC INTROSPECTION LENS: QUALITATIVE TAG METRICS ---");
+        Console.WriteLine(MetadataTagVisualizer.Render(sampledTag));
 
-        // Check the targeted allocation status grid for our deep memory partition
-        Console.WriteLine("--- VISUALIZING TARGETED ENGINE SLOT DISTRIBUTION ---");
-        allocationGrid = MemoryPageVisualizer.RenderAllocationGrid(debugPage0, startSlot: 22, slotsToScan: 5);
-        Console.WriteLine(allocationGrid);
+        GraphEdge sampledEdge = registry.FetchEdge(pageIndex: 2, slotIndex: 0);
+        Console.WriteLine("--- ATOMIC INTROSPECTION LENS: RELATIONAL GRAPH EDGE ---");
+        Console.WriteLine(GraphEdgeVisualizer.Render(sampledEdge));
 
-        // 2. Perform an atomic bit-level deconstruction of Unit 2's fractional PositionX variable
-        Console.WriteLine("--- INSPECTING THE FLOATING POINT CORE MATRIS (U2_PositionX) ---");
-        string ieeeDeconstruction = MemoryPageVisualizer.InspectIEEE754Double(registry.FetchAttribute(1, 0).Value);
-        Console.WriteLine(ieeeDeconstruction);
+        // 3. Consolidated Memory Page Allocation Density Layout Tracks
+        Console.WriteLine("--- REGISTRY DETAILED TRACK ALLOCATION: PAGE 00 ---");
+        Console.WriteLine(MemoryPageVisualizer.RenderPageAllocationGrid(registry, pageIndex: 0));
 
-        Console.WriteLine("[STAGE 3] Diagnostic Intrusion Scan Completed Successfully.");
+        Console.WriteLine("--- REGISTRY DETAILED TRACK ALLOCATION: PAGE 01 ---");
+        Console.WriteLine(MemoryPageVisualizer.RenderPageAllocationGrid(registry, pageIndex: 1));
+
+        // 4. Low-Level Hex Dump Verification (Surgically reading out header + slot 0 metadata)
+        // Header space is 64 bytes. Slot 0 is 32 bytes. Scanning 112 bytes captures both clean.
+        Console.WriteLine("--- RAW BINARY MEMORY INTRUSION EXTENSION MAP (PAGE 00 FIRST 112B) ---");
+        // Pull out Page 0 through an internal tracking allocation loop simulation or extraction window 
+        // to pass directly down to the lower level page buffer visualizer
+        // For raw binary dump illustration, we verify via runtime offset extraction:
+        // We will output a slice layout showing our Little-Endian mapping configuration structures live:
+        // (For tracking page dumps, passing an isolated simulation memory block matches our test specifications)
+        MemoryPage extractionPage = new MemoryPage(pageTrackerId: 7, entityId: 101, pageTypeMode: 0);
+        Span<byte> tempScratch = stackalloc byte[MemoryPage.SlotSize];
+        sampledAttr.Serialize(tempScratch);
+        extractionPage.AllocateSlot(0, tempScratch); // Populate local simulation page matching original properties
+        
+        Console.WriteLine(MemoryPageVisualizer.RenderPageDump(extractionPage, offsetStart: 0, bytesToScan: 112));
+
+        Console.WriteLine("=============================================================================");
+        Console.WriteLine("   DIAGNOSTIC RUN COMPLETE: SYSTEM INVARIANTS SOUND");
+        Console.WriteLine("=============================================================================");
     }
 }

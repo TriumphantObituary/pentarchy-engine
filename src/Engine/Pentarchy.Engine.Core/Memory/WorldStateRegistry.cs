@@ -1,22 +1,22 @@
 using System;
-using System.Text;
 using Pentarchy.Engine.Core.Primitives;
 
 namespace Pentarchy.Engine.Core.Memory;
 
 /// <summary>
-/// The central coordinator that manages segmented memory pages and translates 
-/// abstract data primitives into precise, contiguous binary offsets.
+/// The master flat coordination matrix. Directs, maps, and safeguards raw binary page collections, 
+/// grouping them into isolated, type-safe data pipelines.
 /// </summary>
+/// <remarks>
+/// DESIGN JUSTIFICATION:
+/// This registry acts as a security facade directly above our raw memory grids. It enforces 
+/// strict Page Typology Isolation (ensuring quantitative attributes, qualitative tags, and spatial graph 
+/// links never cross-contaminate the same memory tracks) while remaining entirely parametric to easily 
+/// support future page resizing.
+/// </remarks>
 public sealed class WorldStateRegistry
 {
     private readonly MemoryPage[] _pages;
-    
-    // Fixed layout dimensions for our prototype
-    private const int HeaderSize = 16;
-    private const int SlotSize = 32;
-    private const int ValueSize = 8;
-    private const int KeySize = SlotSize - ValueSize; // 24 Bytes
 
     public WorldStateRegistry(int pageCount)
     {
@@ -28,96 +28,108 @@ public sealed class WorldStateRegistry
         _pages = new MemoryPage[pageCount];
         for (int i = 0; i < pageCount; i++)
         {
-            // Assign a sequential system tracking ID (0, 1, 2...) to each page,
-            // and initialize the Entity ID to 0 (representing an unassigned empty page slot).
             _pages[i] = new MemoryPage(pageTrackerId: (ulong)i, entityId: 0);
         }
     }
 
-    /// <summary>
-    /// Explicitly exposes an API so higher layers can look up which entity owns a page
-    /// </summary>
     public ulong GetEntityOwnerOfPage(int pageIndex)
     {
-        if (pageIndex < 0 || pageIndex >= _pages.Length)
-        {
-            throw new ArgumentOutOfRangeException(nameof(pageIndex));
-        }
-
+        ValidatePageBounds(pageIndex);
         return _pages[pageIndex].EntityId;
     }
 
-    /// <summary>
-    /// Commits an abstract AttributeTuple primitive into a specific page and slot address.
-    /// </summary>
-    public void CommitAttribute(int pageIndex, int slotIndex, AttributeTuple attribute)
+    public void AssignPageToEntity(int pageIndex, ulong entityId, byte pageTypeMode)
     {
-        // Explicitly safeguard page boundaries relative to our allocated array size
-        if (pageIndex < 0 || pageIndex >= _pages.Length)
-        {
-            throw new ArgumentOutOfRangeException(nameof(pageIndex), $"Page index must be between 0 and {_pages.Length - 1}.");
-        }
-
-        // Explicitly safeguard slot boundaries (0 to 31 slots maximum per 1KB page)
-        if (slotIndex < 0 || slotIndex > 31)
-        {
-            throw new ArgumentOutOfRangeException(nameof(slotIndex), "Slot index must be between 0 and 31.");
-        }
-
-        MemoryPage page = _pages[pageIndex];
-        int targetOffset = HeaderSize + (slotIndex * SlotSize);
-
-        // 1. Serialize the String Key into a 24-byte binary window
-        byte[] keyBytes = Encoding.UTF8.GetBytes(attribute.Key);
-        Span<byte> slotBuffer = stackalloc byte[SlotSize];
-
-        // Ensure the string isn't too long for our fixed primitive slot boundary
-        int bytesToCopy = Math.Min(keyBytes.Length, KeySize);
-        keyBytes.AsSpan(0, bytesToCopy).CopyTo(slotBuffer.Slice(0, KeySize));
-
-        // 2. Serialize the Double Value into the final 8-byte binary window
-        byte[] valueBytes = BitConverter.GetBytes(attribute.Value);
-        valueBytes.CopyTo(slotBuffer.Slice(KeySize, ValueSize));
-
-        // 3. Slap the fully packed 32-byte slot onto the raw contiguous memory page
-        page.Write(targetOffset, slotBuffer);
+        ValidatePageBounds(pageIndex);
+        _pages[pageIndex].EntityId = entityId;
+        _pages[pageIndex].PageTypeMode = pageTypeMode;
     }
 
-    /// <summary>
-    /// Fetches an abstract AttributeTuple directly from raw binary page offsets.
-    /// </summary>
+    // =========================================================================
+    // UNIVERSAL ZERO-ALLOCATION PRIMITIVE MATRIX
+    // =========================================================================
+
+    public void CommitAttribute(int pageIndex, int slotIndex, AttributeTuple attribute)
+    {
+        ValidateRoute(pageIndex, slotIndex, expectedMode: 0);
+        
+        // Stack-allocated scratchpad bypasses managed heap generation pools entirely
+        Span<byte> scratchpad = stackalloc byte[MemoryPage.SlotSize];
+        attribute.Serialize(scratchpad);
+        _pages[pageIndex].AllocateSlot(slotIndex, scratchpad);
+    }
+
     public AttributeTuple FetchAttribute(int pageIndex, int slotIndex)
     {
-        // Explicitly safeguard page boundaries relative to our allocated array size
+        ValidateFetch(pageIndex, slotIndex, expectedMode: 0);
+        int targetOffset = MemoryPage.HeaderSize + (slotIndex * MemoryPage.SlotSize);
+        return AttributeTuple.Deserialize(_pages[pageIndex].Read(targetOffset, MemoryPage.SlotSize));
+    }
+
+    public void CommitTag(int pageIndex, int slotIndex, MetadataTag tag)
+    {
+        ValidateRoute(pageIndex, slotIndex, expectedMode: 1);
+        
+        // Stack-allocated scratchpad bypasses managed heap generation pools entirely
+        Span<byte> scratchpad = stackalloc byte[MemoryPage.SlotSize];
+        tag.Serialize(scratchpad);
+        _pages[pageIndex].AllocateSlot(slotIndex, scratchpad);
+    }
+
+    public MetadataTag FetchTag(int pageIndex, int slotIndex)
+    {
+        ValidateFetch(pageIndex, slotIndex, expectedMode: 1);
+        int targetOffset = MemoryPage.HeaderSize + (slotIndex * MemoryPage.SlotSize);
+        return MetadataTag.Deserialize(_pages[pageIndex].Read(targetOffset, MemoryPage.SlotSize));
+    }
+
+    public void CommitEdge(int pageIndex, int slotIndex, GraphEdge edge)
+    {
+        ValidateRoute(pageIndex, slotIndex, expectedMode: 2);
+        
+        Span<byte> scratchpad = stackalloc byte[MemoryPage.SlotSize];
+        edge.Serialize(scratchpad);
+        _pages[pageIndex].AllocateSlot(slotIndex, scratchpad);
+    }
+
+    public GraphEdge FetchEdge(int pageIndex, int slotIndex)
+    {
+        ValidateFetch(pageIndex, slotIndex, expectedMode: 2);
+        int targetOffset = MemoryPage.HeaderSize + (slotIndex * MemoryPage.SlotSize);
+        return GraphEdge.Deserialize(_pages[pageIndex].Read(targetOffset, MemoryPage.SlotSize));
+    }
+
+    // =========================================================================
+    // ARCHITECTURAL PROTECTION SHUTTERS
+    // =========================================================================
+
+    private void ValidateRoute(int pageIndex, int slotIndex, byte expectedMode)
+    {
+        ValidatePageBounds(pageIndex);
+        MemoryPage page = _pages[pageIndex];
+
+        if (page.PageTypeMode != expectedMode)
+        {
+            throw new InvalidOperationException($"Typology Mismatch! Cannot map mode {expectedMode} primitives into a page allocated for mode {page.PageTypeMode}.");
+        }
+    }
+
+    private void ValidateFetch(int pageIndex, int slotIndex, byte expectedMode)
+    {
+        ValidateRoute(pageIndex, slotIndex, expectedMode);
+        
+        // Intercept read requests targeting unallocated or uninitialized memory fields
+        if (!_pages[pageIndex].IsSlotActive(slotIndex))
+        {
+            throw new InvalidOperationException($"Read Violation! Attempted to access unallocated slot track index {slotIndex}.");
+        }
+    }
+
+    private void ValidatePageBounds(int pageIndex)
+    {
         if (pageIndex < 0 || pageIndex >= _pages.Length)
         {
-            throw new ArgumentOutOfRangeException(nameof(pageIndex), $"Page index must be between 0 and {_pages.Length - 1}.");
+            throw new ArgumentOutOfRangeException(nameof(pageIndex), "Page request index falls outside configured registry boundaries.");
         }
-
-        // Explicitly safeguard slot boundaries (0 to 31 slots maximum per 1KB page)
-        if (slotIndex < 0 || slotIndex > 31)
-        {
-            throw new ArgumentOutOfRangeException(nameof(slotIndex), "Slot index must be between 0 and 31.");
-        }
-
-        MemoryPage page = _pages[pageIndex];
-        int targetOffset = HeaderSize + (slotIndex * SlotSize);
-
-        // Read the exact 32-byte chunk out of the page window
-        ReadOnlySpan<byte> slotData = page.Read(targetOffset, SlotSize);
-
-        // 1. Rehydrate the Key String (trimming off empty trailing null bytes)
-        ReadOnlySpan<byte> keyWindow = slotData.Slice(0, KeySize);
-        int actualLength = 0;
-        while (actualLength < KeySize && keyWindow[actualLength] != 0)
-        {
-            actualLength++;
-        }
-        string key = Encoding.UTF8.GetString(keyWindow.Slice(0, actualLength));
-
-        // 2. Rehydrate the Double Value from the last 8 bytes
-        double value = BitConverter.ToDouble(slotData.Slice(KeySize, ValueSize));
-
-        return new AttributeTuple(key, value);
     }
 }
